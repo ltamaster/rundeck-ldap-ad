@@ -1,0 +1,67 @@
+#!/bin/bash
+
+#exit on error
+set -e
+
+# helper function
+
+run_helpers() {
+  local -r helper=$1
+  local -a scripts=( ${@:2} )
+
+  for script in "${scripts[@]}"
+  do
+      [[ ! -f "$script" ]] && {
+          echo >&2 "WARN: $helper script not found. skipping: '$script'"
+          continue
+      }
+      echo "### applying $helper script: $script"
+      . "$script"
+  done
+}
+
+# RUN TEST PRESTART SCRIPT
+if [[ -n "$CONFIG_SCRIPT_PRESTART" ]]
+then
+  config_scripts=( ${CONFIG_SCRIPT_PRESTART//,/ } )
+
+  run_helpers "prestart" "${config_scripts[@]}"
+else
+  echo "### Prestart config not set. skipping..."
+fi
+
+FWKPROPS=/etc/rundeck/framework.properties
+RDPROPS=/etc/rundeck/rundeck-config.properties
+
+cat >>"$FWKPROPS" <<END
+framework.ssh-connection-timeout=0
+framework.ssh-command-timeout=0
+END
+
+sed -i 's,grails.serverURL\=.*,grails.serverURL\='${RUNDECK_URL}',g' "$RDPROPS"
+
+cat $RDPROPS
+cat $FWKPROPS
+
+
+service rundeckd start
+
+### POST CONFIG
+# RUN TEST POSTSTART SCRIPT
+if [[ ! -z "$CONFIG_SCRIPT_POSTSTART" ]]
+then
+  config_scripts=( ${CONFIG_SCRIPT_POSTSTART//,/ } )
+  run_helpers "post-start" "${config_scripts[@]}"
+else
+  echo "### Post start config not set. skipping..."
+fi
+
+
+# Keep alive
+tail -F -n100 \
+ /var/log/rundeck/service.log \
+ /var/log/rundeck/rundeck.executions.log \
+ /var/log/rundeck/rundeck.jobs.log \
+ /var/log/rundeck/rundeck.log \
+ /var/log/rundeck/rundeck.options.log \
+ /var/log/rundeck/rundeck.storage.log

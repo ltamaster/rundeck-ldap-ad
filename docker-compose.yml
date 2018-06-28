@@ -1,0 +1,80 @@
+
+version: '3'
+
+services:
+
+  rundeck-oss:
+    build: rundeck
+    ports:
+     - "4440:4440"
+     - "22"
+    links:
+      - mysql
+      - openldap
+    environment:
+      - RUNDECK_URL=http://localhost:4440
+      - CONFIG_SCRIPT_PRESTART=scripts/database,scripts/authentication
+      #- CONFIG_SCRIPT_POSTSTART=scripts/import_project
+      - DATABASE_DRIVER=com.mysql.jdbc.Driver
+      - DATABASE_URL=jdbc:mysql://mysql:3306/rundeckdb?autoReconnect=true&useUnicode=yes
+      - DATABASE_USER=rundeck
+      - DATABASE_PASS=rundeck123.
+      - DATABASE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
+      - LDAP_AUTH_TYPE=ldap # ldap, ad
+      - LDAP_URL=ldap://openldap:389
+      - LDAP_BIND_USER=cn=admin,dc=rundeck,dc=com
+      - LDAP_BIND_PASSWORD=admin
+      - LDAP_ROLES_BASE_DN=dc=rundeck,dc=com
+      - LDAP_USER_BASE_DN=dc=rundeck,dc=com
+
+  mysql:
+    image: 'mysql:5.6'
+    ports:
+      - '3306:3306'
+    volumes:
+      - 'mysql_data:/var/lib/mysql'
+    environment:
+      - MYSQL_ROOT_PASSWORD=rundeck123.
+      - MYSQL_USER=rundeck
+      - MYSQL_PASSWORD=rundeck123.
+      - MYSQL_DATABASE=rundeckdb
+
+  openldap:
+    image: osixia/openldap:1.2.1
+    container_name: openldap
+    environment:
+      LDAP_LOG_LEVEL: "256"
+      LDAP_ORGANISATION: "Rundeck"
+      LDAP_DOMAIN: "rundeck.com"
+      LDAP_BASE_DN: "dc=rundeck,dc=com"
+      LDAP_ADMIN_PASSWORD: "admin"
+      LDAP_CONFIG_PASSWORD: "config"
+      LDAP_READONLY_USER: "false"
+      LDAP_REPLICATION: "false"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
+    tty: true
+    stdin_open: true
+    volumes:
+      - /var/lib/ldap
+      - /etc/ldap/slapd.d
+      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    ports:
+      - "389:389"
+      - "636:636"
+    domainname: "rundeck.com" # important: same as hostname
+    hostname: "ldap.rundeck.com"
+  phpldapadmin:
+    image: osixia/phpldapadmin:latest
+    container_name: phpldapadmin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "openldap"
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8080:80"
+    depends_on:
+      - openldap
+
+volumes:
+  mysql_data:
+    driver: local

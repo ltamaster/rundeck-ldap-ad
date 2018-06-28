@@ -1,0 +1,31 @@
+description: Test
+context:
+  project: '.*' # all projects
+for:
+  resource:
+   - equals:
+        kind: job
+     allow: [read,run]
+   - equals:
+        kind: node
+     allow: [read,update,refresh]
+   - equals:
+        kind: event
+     allow: [read,run]
+  job:
+    - allow: [read,run]
+  node:
+    - allow: [read,run]
+by:
+  group: Test
+
+---
+
+description: Test
+context:
+  application: 'rundeck'
+for:
+  project:
+    - allow: [read,import,export]
+by:
+  group: Test

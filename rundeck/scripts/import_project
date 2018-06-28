@@ -1,0 +1,67 @@
+#!/bin/bash
+
+#trap 'echo "rd fail" ; exit 0' EXIT
+set -eu
+
+echo "Sleeping 30s ..."
+sleep 30
+
+RUNDECK_ADMIN_PASSWORD=${RUNDECK_ADMIN_PASSWORD:-admin}
+
+export RD_USER=admin
+export RD_PASSWORD=$RUNDECK_ADMIN_PASSWORD
+export RD_URL=http://localhost:4440
+export RD_COLOR=0
+export RD_OPTS="-Dfile.encoding=utf-8"
+export RD_HTTP_TIMEOUT=300
+
+
+ARCHIVES=(data/projects/*.jar)
+
+echo "There are ${#ARCHIVES[*]} project archives to import"
+
+#default rundeck user password for key storage
+echo "rundeck" > tmp.password
+
+for file in "${ARCHIVES[@]}"
+do
+	echo "Importing archive file $file ..."
+
+    PROJECT_NAME=$(unzip -p "$file" META-INF/MANIFEST.MF|awk '/Rundeck-Archive-Project-Name:/ {print $2}' | tr -d '\r' )
+    if ! rd projects info -p "$PROJECT_NAME" >/dev/null 2>&1
+    then
+	echo "Creating project: $PROJECT_NAME ..."
+	else
+		echo >&2 "WARN: Project already exists: '$PROJECT_NAME' (skipping)"
+	fi
+
+	sleep 10
+
+	default_password_key_path=$(unzip -p "$file" "rundeck-$PROJECT_NAME/files/etc/project.properties"|awk -F = '/project.ssh-password-storage-path/ {print $2}' | tr -d '\r' )
+
+	if [[ -n "${default_password_key_path:-}" ]]
+	then
+		echo "Creating default key at path: '$default_password_key_path'"
+
+		if ! rd keys info -p "$default_password_key_path" > /dev/null 2>&1
+		then
+			if ! rd keys create -t password -p "$default_password_key_path" -f tmp.password
+			then
+				echo >&2 "WARN: Failed to create key at path '$default_password_key_path'"
+			fi
+		else
+			echo >&2 "WARN: key already exists: '$default_password_key_path' (skipping)"
+		fi
+	fi
+ 	#exist=$(rd projects list |grep "$PROJECT_NAME )
+    #if [  -z "$exist" ]; then
+	if ! rd projects create -p "$PROJECT_NAME"
+	then
+		echo >&2 "WARN: Failed to create project $PROJECT_NAME"
+	fi
+    #fi
+
+    rd projects archives import -f "$file" -p  "$PROJECT_NAME" --remove --noExecutions --include-config --include-acl
+    #fi
+
+done
