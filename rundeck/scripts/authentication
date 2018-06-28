@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 
+if [[ "$LDAP_AUTH_TYPE" = "ldap" ]]; then
+
 cat > /etc/rundeck/jaas-ldap.conf <<END
 
 ldap {
@@ -37,3 +39,48 @@ export LOGIN_MODULE=ldap
 export JAAS_CONF=/etc/rundeck/jaas-ldap.conf
 
 END
+
+fi
+
+
+
+
+if [[ "$LDAP_AUTH_TYPE" = "ad" ]]; then
+
+cat > /etc/rundeck/jaas-activedirectory.conf <<END
+
+activedirectory {
+    com.dtolabs.rundeck.jetty.jaas.JettyCachingLdapLoginModule required
+	debug="true"
+	contextFactory="com.sun.jndi.ldap.LdapCtxFactory"
+	providerUrl="$LDAP_URL"
+	authenticationMethod="simple"
+	forceBindingLogin="true"
+	bindDn="$LDAP_BIND_USER"
+    bindPassword="$LDAP_BIND_PASSWORD"
+    userBaseDn="$LDAP_USER_BASE_DN"
+    userRdnAttribute="sAMAccountName"
+	userIdAttribute="sAMAccountName"
+	userPasswordAttribute="unicodePwd"
+	userObjectClass="user"
+    roleBaseDn="$LDAP_ROLES_BASE_DN"
+	roleNameAttribute="cn"
+	roleMemberAttribute="member"
+	roleObjectClass="group"
+	nestedGroups="true"
+	supplementalRoles="user"
+    cacheDurationMillis="0"
+	reportStatistics="true";
+
+};
+END
+
+cat > /etc/default/rundeckd <<END
+
+export LOGIN_MODULE=activedirectory
+export JAAS_CONF=/etc/rundeck/jaas-activedirectory.conf
+
+END
+
+fi
+

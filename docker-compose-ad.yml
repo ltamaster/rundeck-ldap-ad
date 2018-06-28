@@ -1,0 +1,43 @@
+
+version: '3'
+
+services:
+
+  rundeck-oss:
+    build: rundeck
+    ports:
+     - "4440:4440"
+     - "22"
+    links:
+      - mysql
+    environment:
+      - RUNDECK_URL=http://localhost:4440
+      - CONFIG_SCRIPT_PRESTART=scripts/database,scripts/authentication
+      #- CONFIG_SCRIPT_POSTSTART=scripts/import_project
+      - DATABASE_DRIVER=com.mysql.jdbc.Driver
+      - DATABASE_URL=jdbc:mysql://mysql:3306/rundeckdb?autoReconnect=true&useUnicode=yes
+      - DATABASE_USER=rundeck
+      - DATABASE_PASS=rundeck123.
+      - DATABASE_DIALECT=org.hibernate.dialect.MySQL5InnoDBDialect
+      - LDAP_AUTH_TYPE=ad # ldap, ad
+      - LDAP_URL=ldap://192.168.0.5:389
+      - LDAP_BIND_USER=CN=Administrator,CN=Users,DC=WindowsVirtual,DC=local
+      - LDAP_BIND_PASSWORD=Ltoledo1206.
+      - LDAP_ROLES_BASE_DN=CN=Roles,DC=WindowsVirtual,DC=local
+      - LDAP_USER_BASE_DN=CN=Users,DC=WindowsVirtual,DC=local
+
+  mysql:
+    image: 'mysql:5.6'
+    ports:
+      - '3306:3306'
+    volumes:
+      - 'mysql_data:/var/lib/mysql'
+    environment:
+      - MYSQL_ROOT_PASSWORD=rundeck123.
+      - MYSQL_USER=rundeck
+      - MYSQL_PASSWORD=rundeck123.
+      - MYSQL_DATABASE=rundeckdb
+
+volumes:
+  mysql_data:
+    driver: local
