@@ -17,6 +17,15 @@ Set LDAP environment variables on ``docker-compose.yml`` (the default values wor
 * LDAP_ADMIN_PASSWORD
 * LDAP_DOMAIN
 
+### Users and Roles
+
+On ``ldap/rundeck.ldif`` it was loaded some roles and users by default, you can change users there or use LDAP Admin GUI.
+
+Default users are:
+* username: rundeckadmin, password: Rundeck123. (Admin user)
+* username: ruser, password: Rundeck123. (Test user)
+
+On ```rundeck/data/acl``` you can load customs acls policies for rundeck.
 
 ## Build
 
